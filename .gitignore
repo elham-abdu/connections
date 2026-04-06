@@ -1,0 +1,27 @@
+# ===== FRONTEND =====
+client/node_modules/
+client/build/
+client/dist/
+
+# ===== BACKEND =====
+server/node_modules/
+server/.env
+server/dist/
+
+# ===== GENERAL =====
+node_modules/
+.env
+.env.local
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# TypeScript
+*.tsbuildinfo
