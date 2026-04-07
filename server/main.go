@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -8,8 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/nedpals/supabase-go"
+	"github.com/yourusername/pulse-server/internal/ai"
 	"github.com/yourusername/pulse-server/internal/models"
-	"github.com/yourusername/pulse-server/internal/ai"  // This imports recommender.go
 )
 
 func main() {
@@ -27,15 +28,13 @@ func main() {
 	// 3. Setup the Router
 	r := gin.Default()
 
-	// 4. CORS MIDDLEWARE - MUST BE FIRST BEFORE ANY ROUTES
+	// 4. CORS MIDDLEWARE
 	r.Use(func(c *gin.Context) {
-		// Allow all origins for development
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Accept")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		
-		// Handle preflight requests
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
@@ -43,98 +42,121 @@ func main() {
 		c.Next()
 	})
 
-	// 5. ROUTES (Now protected by CORS)
-	
-	// Health check route (useful for frontend)
+	// 5. ALL ROUTES
+
+	// Health Check
 	r.GET("/api/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "healthy",
-			"message": "Server is running",
-			"endpoints": []string{
-				"/ping",
-				"/api/waiters",
-				"/api/recruit",
-			},
-		})
+		c.JSON(200, gin.H{"status": "healthy"})
 	})
 
-	// Test route
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "pong"})
-	})
+	// --- STAFF ROUTES ---
 
-	// Waiters route
-	r.GET("/api/waiters", func(c *gin.Context) {
-		var profiles []models.Profile
-
-		// Select from Supabase
-		err := sbClient.DB.From("profiles").Select("*").Eq("role", "waiter").Execute(&profiles)
-		
+	// GET all staff members
+	r.GET("/api/staff", func(c *gin.Context) {
+		var staff []models.Profile
+		err := sbClient.DB.From("profiles").Select("*").Execute(&staff)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-
-		c.JSON(http.StatusOK, profiles)
+		c.JSON(http.StatusOK, staff)
 	})
 
-	// Recruit route
+	// POST create new staff (Hiring)
+	r.POST("/api/staff", func(c *gin.Context) {
+		var newStaffData map[string]interface{}
+		if err := c.ShouldBindJSON(&newStaffData); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid data"})
+			return
+		}
+
+		if _, ok := newStaffData["loyalty_score"]; !ok {
+			newStaffData["loyalty_score"] = 100
+		}
+
+		var results []map[string]interface{}
+		err := sbClient.DB.From("profiles").Insert(newStaffData).Execute(&results)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusCreated, results[0])
+	})
+
+	// --- RECRUITMENT & SHIFTS ---
+
+	// POST AI Recruitment
 	r.POST("/api/recruit", func(c *gin.Context) {
-		// 1. Get the manager's requirement from the request
 		var input struct {
 			Requirement string `json:"requirement"`
+			Role        string `json:"role,omitempty"`
 		}
 		if err := c.ShouldBindJSON(&input); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid request: " + err.Error()})
+			c.JSON(400, gin.H{"error": "Invalid request"})
 			return
 		}
 
-		// Validate requirement
-		if input.Requirement == "" {
-			c.JSON(400, gin.H{"error": "Requirement cannot be empty"})
-			return
-		}
-
-		// 2. Fetch all waiters from Supabase (to give to the AI)
-		var allWaiters []models.Profile
-		err := sbClient.DB.From("profiles").Select("*").Eq("role", "waiter").Execute(&allWaiters)
+		var allStaff []models.Profile
+		err := sbClient.DB.From("profiles").Select("*").Execute(&allStaff)
 		if err != nil {
-			c.JSON(500, gin.H{"error": "Failed to fetch waiters: " + err.Error()})
+			c.JSON(500, gin.H{"error": "Database error"})
 			return
 		}
 
-		// Check if we have any waiters
-		if len(allWaiters) == 0 {
-			c.JSON(404, gin.H{"error": "No waiters found in database"})
-			return
+		// Filter by role if requested
+		if input.Role != "" && input.Role != "all" {
+			var filtered []models.Profile
+			for _, s := range allStaff {
+				if s.Role == input.Role {
+					filtered = append(filtered, s)
+				}
+			}
+			allStaff = filtered
 		}
 
-		log.Printf("Processing request for: %s", input.Requirement)
-		log.Printf("Found %d waiters in database", len(allWaiters))
-
-		// 3. Ask Gemini to match them
-		recommendation, err := ai.MatchWaiters(input.Requirement, allWaiters)
+		recommendation, err := ai.MatchStaff(input.Requirement, allStaff)
 		if err != nil {
-			log.Printf("AI Error: %v", err)
-			c.JSON(500, gin.H{"error": "AI processing failed: " + err.Error()})
+			c.JSON(500, gin.H{"error": "AI failed"})
 			return
 		}
-
 		c.JSON(200, gin.H{"recommendation": recommendation})
 	})
 
+	// POST Book a Shift (Assigning Staff)
+	r.POST("/api/shifts", func(c *gin.Context) {
+		var shiftData map[string]interface{}
+		if err := c.ShouldBindJSON(&shiftData); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid shift data"})
+			return
+		}
+
+		// Ensure default status
+		if _, ok := shiftData["status"]; !ok {
+			shiftData["status"] = "scheduled"
+		}
+
+		var results []map[string]interface{}
+		err := sbClient.DB.From("shifts").Insert(shiftData).Execute(&results)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to book: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusCreated, results[0])
+	})
+
+	// GET all shifts (For the dashboard)
+	r.GET("/api/shifts", func(c *gin.Context) {
+		var shifts []map[string]interface{}
+		err := sbClient.DB.From("shifts").Select("*").Execute(&shifts)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, shifts)
+	})
+
 	// 6. Start the engine
-	log.Println("========================================")
-	log.Println("🚀 Server starting on http://localhost:8080")
-	log.Println("🔓 CORS enabled for all origins (development mode)")
-	log.Println("📋 Available endpoints:")
-	log.Println("   GET  http://localhost:8080/api/health")
-	log.Println("   GET  http://localhost:8080/ping")
-	log.Println("   GET  http://localhost:8080/api/waiters")
-	log.Println("   POST http://localhost:8080/api/recruit")
-	log.Println("========================================")
-	
-	if err := r.Run(":8080"); err != nil {
-		log.Fatal("Failed to start server:", err)
-	}
+	log.Printf("🚀 Pulse Staffing Server running on http://localhost:8080")
+	r.Run(":8080")
 }

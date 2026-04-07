@@ -4,43 +4,62 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
 	"github.com/yourusername/pulse-server/internal/models"
 )
 
-func MatchWaiters(managerNeed string, waiters []models.Profile) (string, error) {
+func MatchStaff(managerNeed string, staff []models.Profile) (string, error) {
 	ctx := context.Background()
-	client, err := genai.NewClient(ctx, option.WithAPIKey(os.Getenv("GEMINI_API_KEY")))
+	
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		return "", fmt.Errorf("GEMINI_API_KEY environment variable not set")
+	}
+	
+	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create AI client: %v", err)
 	}
 	defer client.Close()
 
-	// Use the correct model name from your curl output
 	model := client.GenerativeModel("models/gemini-2.5-flash")
+	
+	// Build a simple, clear staff list
+	var staffList strings.Builder
+	for i, s := range staff {
+		staffList.WriteString(fmt.Sprintf("%d. %s - %s - Tags: %s\n", 
+			i+1, s.FullName, s.Role, strings.Join(s.VibeTags, ", ")))
+	}
+	
+	prompt := fmt.Sprintf(`Find best staff for: "%s"
 
-	// Build the prompt
-	prompt := fmt.Sprintf(`
-		You are a luxury hotel recruitment assistant. 
-		A manager is looking for: "%s"
-		
-		Here are the available staff: %v
-		
-		Pick the best 3 candidates and explain why their "vibe_tags" match the manager's request. 
-		Keep it professional and concise.
-	`, managerNeed, waiters)
+Available staff:
+%s
+
+Return TOP 3 matches. Put PERFECT matches first. Be brief.
+
+Example format:
+1. Name (Role) - Tags: [tags] - Reason: why
+2. Name (Role) - Tags: [tags] - Reason: why
+3. Name (Role) - Tags: [tags] - Reason: why
+
+Summary: one sentence.`, managerNeed, staffList.String())
 
 	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("AI generation failed: %v", err)
 	}
 
-	// Extract the text response safely
 	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
 		return "", fmt.Errorf("no response from AI model")
 	}
 
 	return fmt.Sprintf("%v", resp.Candidates[0].Content.Parts[0]), nil
+}
+
+func MatchWaiters(managerNeed string, waiters []models.Profile) (string, error) {
+	return MatchStaff(managerNeed, waiters)
 }
