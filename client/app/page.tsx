@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { Sparkles, Users, Crown, Loader2, Send, CheckCircle2 } from "lucide-react";
+import { Sparkles, Users, Crown, Loader2, Send, CheckCircle2, ClipboardList } from "lucide-react";
+import Link from "next/link";
 
 export default function ManagerDashboard() {
   const [requirement, setRequirement] = useState("");
@@ -8,48 +9,67 @@ export default function ManagerDashboard() {
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // PRODUCTION FIX: Use environment variable or fallback to local
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
   const handleRecruit = async () => {
+    if (!requirement.trim()) {
+      setResult("Please describe what staff you need.");
+      return;
+    }
+
     setLoading(true);
+    setResult("");
+    
     try {
-      // Step 3 Fix: Use the Environment Variable we set in Vercel
-      // This will use your Render URL in production and localhost during dev
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-      
       const requestBody = {
         requirement: requirement,
         ...(role && { role: role })
       };
       
-      // We use backticks (``) to inject the API_URL variable
       const response = await fetch(`${API_URL}/api/recruit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
-
+      
       if (!response.ok) {
-        throw new Error("Failed to connect to backend");
+        throw new Error(`Server error: ${response.status}`);
       }
-
+      
       const data = await response.json();
       setResult(data.recommendation);
     } catch (err) {
-      setResult("The AI engine is currently waking up or offline. Please try again in 30 seconds.");
       console.error("Fetch error:", err);
+      setResult("The AI engine is waking up. Please try again in 30 seconds.");
     }
     setLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-stone-50">
-      <div className="relative max-w-4xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
+      {/* Navigation Bar */}
+      <nav className="p-6 flex justify-between items-center max-w-6xl mx-auto">
+        <div className="flex items-center gap-2 font-serif font-bold text-stone-800">
+          <Crown className="w-5 h-5 text-amber-600" /> Pulse AI
+        </div>
+        <Link 
+          href="/staff" 
+          className="flex items-center gap-2 text-sm font-semibold bg-white px-4 py-2 rounded-full border border-stone-200 shadow-sm hover:shadow-md transition"
+        >
+          <ClipboardList className="w-4 h-4" /> Open Staff Registry
+        </Link>
+      </nav>
+
+      <div className="relative max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header Section */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center mb-4">
             <div className="bg-gradient-to-r from-amber-400 to-amber-600 p-3 rounded-2xl shadow-lg">
               <Crown className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-stone-800 via-amber-800 to-stone-800 bg-clip-text text-transparent mb-4 font-serif">
+          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-stone-800 via-amber-800 to-stone-800 bg-clip-text text-transparent mb-4 font-serif">
             Pulse Staffing AI
           </h1>
           <p className="text-stone-600 text-lg max-w-2xl mx-auto">
@@ -62,8 +82,10 @@ export default function ManagerDashboard() {
           </div>
         </div>
 
+        {/* Main Card */}
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-amber-100 overflow-hidden">
-          <div className="p-8">
+          <div className="p-6 sm:p-8">
+            {/* Role Filter */}
             <div className="mb-6">
               <label className="block text-sm font-semibold text-stone-700 mb-2">
                 Filter by Role (Optional)
@@ -81,6 +103,7 @@ export default function ManagerDashboard() {
               </select>
             </div>
 
+            {/* Staffing Requirement Input */}
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-stone-700 mb-2 flex items-center gap-2">
@@ -96,6 +119,7 @@ export default function ManagerDashboard() {
                 />
               </div>
 
+              {/* Submit Button */}
               <button
                 onClick={handleRecruit}
                 disabled={loading || !requirement.trim()}
@@ -117,6 +141,7 @@ export default function ManagerDashboard() {
               </button>
             </div>
 
+            {/* Results Section */}
             {result && (
               <div className="mt-8 animate-fadeIn">
                 <div className="bg-gradient-to-br from-amber-50 to-stone-50 rounded-2xl border border-amber-200 overflow-hidden shadow-lg">

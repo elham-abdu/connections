@@ -25,7 +25,8 @@ func MatchStaff(managerNeed string, staff []models.Profile) (string, error) {
 	}
 	defer client.Close()
 
-	model := client.GenerativeModel("models/gemini-2.5-flash")
+	// Use gemini-1.5-flash for better rate limits
+	model := client.GenerativeModel("models/gemini-1.5-flash")
 	
 	// Build a simple, clear staff list
 	var staffList strings.Builder
@@ -41,7 +42,7 @@ Available staff:
 
 Return TOP 3 matches. Put PERFECT matches first. Be brief.
 
-Example format:
+Format:
 1. Name (Role) - Tags: [tags] - Reason: why
 2. Name (Role) - Tags: [tags] - Reason: why
 3. Name (Role) - Tags: [tags] - Reason: why

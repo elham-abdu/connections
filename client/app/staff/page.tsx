@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Users, UserPlus, Star, ArrowLeft, X, CheckCircle2, Loader2, Mail } from "lucide-react";
+import { Users, UserPlus, Star, ArrowLeft, X, CheckCircle2, Loader2, Mail, Crown } from "lucide-react";
 import Link from "next/link";
 
 interface StaffMember {
@@ -25,10 +25,13 @@ export default function StaffDirectory() {
     vibe_tags: ""
   });
 
+  // PRODUCTION FIX: Use environment variable or fallback to local
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
   const fetchStaff = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8080/api/staff");
+      const res = await fetch(`${API_URL}/api/staff`);
       const data = await res.json();
       const staffData = Array.isArray(data) ? data : data.value || [];
       setStaff(staffData);
@@ -49,7 +52,7 @@ export default function StaffDirectory() {
     const tagsArray = newStaff.vibe_tags.split(",").map(t => t.trim()).filter(t => t !== "");
     
     try {
-      const response = await fetch("http://localhost:8080/api/staff", {
+      const response = await fetch(`${API_URL}/api/staff`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -80,15 +83,21 @@ export default function StaffDirectory() {
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-stone-50 p-6 md:p-12">
       <div className="max-w-6xl mx-auto">
         
+        {/* Header Section with Navigation */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
           <div>
-            <Link href="/dashboard" className="text-amber-700 flex items-center gap-2 mb-4 hover:gap-3 transition-all font-medium">
+            <Link href="/" className="text-amber-700 flex items-center gap-2 mb-4 hover:gap-3 transition-all font-medium">
               <ArrowLeft className="w-4 h-4" /> Back to AI Recruitment
             </Link>
-            <h1 className="text-4xl font-serif font-bold text-stone-800">
-              Staff Registry
-            </h1>
-            <p className="text-stone-600 mt-1">Onboard and manage your luxury service team</p>
+            <div className="flex items-center gap-3">
+              <Crown className="w-8 h-8 text-amber-600" />
+              <div>
+                <h1 className="text-4xl font-serif font-bold text-stone-800">
+                  Staff Registry
+                </h1>
+                <p className="text-stone-600 mt-1">Onboard and manage your luxury service team</p>
+              </div>
+            </div>
           </div>
           
           <button 
@@ -104,6 +113,7 @@ export default function StaffDirectory() {
           </button>
         </div>
 
+        {/* Hiring Form */}
         {showForm && (
           <div className="mb-10 bg-white p-8 rounded-3xl border-2 border-amber-200 shadow-xl">
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-stone-800">
@@ -175,6 +185,7 @@ export default function StaffDirectory() {
           </div>
         )}
 
+        {/* Staff Table */}
         <div className="bg-white rounded-3xl shadow-xl border border-stone-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
