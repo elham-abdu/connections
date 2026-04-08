@@ -111,6 +111,20 @@ func main() {
 		c.JSON(http.StatusCreated, results[0])
 	})
 
+	// DELETE staff member - NEW ROUTE
+	r.DELETE("/api/staff/:id", func(c *gin.Context) {
+		id := c.Param("id")
+
+		// Delete from Supabase where "id" matches the URL parameter
+		err := sbClient.DB.From("profiles").Delete().Eq("id", id).Execute(nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Staff member removed successfully"})
+	})
+
 	// GET waiters only
 	r.GET("/api/waiters", func(c *gin.Context) {
 		var profiles []models.Profile
@@ -196,6 +210,7 @@ func main() {
 	log.Println("   GET  /ping")
 	log.Println("   GET  /api/staff")
 	log.Println("   POST /api/staff")
+	log.Println("   DELETE /api/staff/:id")
 	log.Println("   GET  /api/waiters")
 	log.Println("   POST /api/recruit")
 	log.Println("========================================")

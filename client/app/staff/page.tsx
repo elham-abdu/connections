@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Users, UserPlus, Star, ArrowLeft, X, CheckCircle2, Loader2, Mail, Crown } from "lucide-react";
+import { Users, UserPlus, Star, ArrowLeft, X, CheckCircle2, Loader2, Mail, Crown, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 interface StaffMember {
@@ -77,6 +77,28 @@ export default function StaffDirectory() {
       console.error(err);
     }
     setSubmitting(false);
+  };
+
+  // NEW: Delete staff member
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to remove this staff member?")) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/staff/${id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        // Refresh the list locally so the person disappears immediately
+        setStaff(staff.filter((member) => member.id !== id));
+        alert("Staff member removed successfully");
+      } else {
+        alert("Failed to delete staff member");
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+      alert("Error connecting to server");
+    }
   };
 
   return (
@@ -196,6 +218,7 @@ export default function StaffDirectory() {
                   <th className="px-8 py-5 font-serif font-medium">Role</th>
                   <th className="px-8 py-5 font-serif font-medium text-center">Loyalty</th>
                   <th className="px-8 py-5 font-serif font-medium">Personal Vibes</th>
+                  <th className="px-8 py-5 font-serif font-medium text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
@@ -226,6 +249,15 @@ export default function StaffDirectory() {
                           </span>
                         ))}
                       </div>
+                    </td>
+                    <td className="px-8 py-6 text-center">
+                      <button 
+                        onClick={() => handleDelete(member.id)}
+                        className="text-stone-400 hover:text-red-600 transition-colors p-2 rounded-lg hover:bg-red-50"
+                        title="Remove Staff"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                     </td>
                   </tr>
                 ))}
