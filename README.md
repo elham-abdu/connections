@@ -1,4 +1,4 @@
-Connections AI
+Connections AI-undergoing project
 AI-Powered Hospitality Staffing Platform
 A luxury-focused, AI-driven staffing platform designed to redefine how hospitality businesses discover, match, and manage talent using intelligent 'vibe-based' matching.
 🚀 Vision
