@@ -24,12 +24,11 @@ export default function LandingPage() {
       <div className="fixed inset-0 bg-gradient-to-br from-[#0a0806] via-[#14110e] to-[#0a0806] -z-10" />
       <div className="fixed inset-0 bg-[url('https://www.transparenttextures.com/patterns/subtle-grey.png')] opacity-20 -z-10" />
 
-      {/* ==================== CLEAN LUXURY HEADER ==================== */}
-      <header className="relative z-50">
-        <div className="bg-black/40 backdrop-blur-md border-b border-amber-500/10">
+      {/* Fixed Glass Header */}
+      <header className="fixed top-0 left-0 right-0 z-50">
+        <div className="bg-black/30 backdrop-blur-xl border-b border-amber-500/20">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="flex justify-between items-center h-16 lg:h-20">
-              {/* Logo */}
               <Link href="/" className="flex items-center gap-2 group cursor-pointer">
                 <Crown className="text-amber-400" size={22} />
                 <div>
@@ -40,23 +39,19 @@ export default function LandingPage() {
                 </div>
               </Link>
 
-              {/* Desktop Navigation */}
+              {/* NEW NAVIGATION */}
               <nav className="hidden md:flex items-center gap-8">
+                <Link href="/what-we-do" className="text-stone-300 hover:text-amber-400 transition-colors duration-300 text-xs font-sans tracking-[0.15em] uppercase">
+                  What We Do
+                </Link>
                 <Link href="/about" className="text-stone-300 hover:text-amber-400 transition-colors duration-300 text-xs font-sans tracking-[0.15em] uppercase">
-                  System
+                  About Us
                 </Link>
-                <Link href="/security" className="text-stone-300 hover:text-amber-400 transition-colors duration-300 text-xs font-sans tracking-[0.15em] uppercase">
-                  Security
-                </Link>
-                <Link href="/solutions" className="text-stone-300 hover:text-amber-400 transition-colors duration-300 text-xs font-sans tracking-[0.15em] uppercase">
-                  Solutions
-                </Link>
-                <Link href="/enterprise" className="text-stone-300 hover:text-amber-400 transition-colors duration-300 text-xs font-sans tracking-[0.15em] uppercase">
-                  Enterprise
+                <Link href="/contact" className="text-stone-300 hover:text-amber-400 transition-colors duration-300 text-xs font-sans tracking-[0.15em] uppercase">
+                  Contact
                 </Link>
               </nav>
 
-              {/* CTA Buttons Desktop */}
               <div className="hidden md:flex items-center gap-4">
                 <Link href="/login" className="text-xs font-sans tracking-[0.1em] uppercase text-stone-300 hover:text-amber-400 transition-colors">
                   Sign In
@@ -66,7 +61,6 @@ export default function LandingPage() {
                 </Link>
               </div>
 
-              {/* Mobile Menu Button */}
               <button 
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden text-amber-400 focus:outline-none"
@@ -77,21 +71,17 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Mobile Menu Dropdown */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-black/95 backdrop-blur-xl border-b border-amber-500/20">
+          <div className="md:hidden bg-black/80 backdrop-blur-xl border-b border-amber-500/20">
             <div className="px-6 py-6 flex flex-col gap-4">
+              <Link href="/what-we-do" className="text-stone-300 hover:text-amber-400 transition-colors text-sm font-sans tracking-[0.15em] uppercase py-2" onClick={() => setMobileMenuOpen(false)}>
+                What We Do
+              </Link>
               <Link href="/about" className="text-stone-300 hover:text-amber-400 transition-colors text-sm font-sans tracking-[0.15em] uppercase py-2" onClick={() => setMobileMenuOpen(false)}>
-                System
+                About Us
               </Link>
-              <Link href="/security" className="text-stone-300 hover:text-amber-400 transition-colors text-sm font-sans tracking-[0.15em] uppercase py-2" onClick={() => setMobileMenuOpen(false)}>
-                Security
-              </Link>
-              <Link href="/solutions" className="text-stone-300 hover:text-amber-400 transition-colors text-sm font-sans tracking-[0.15em] uppercase py-2" onClick={() => setMobileMenuOpen(false)}>
-                Solutions
-              </Link>
-              <Link href="/enterprise" className="text-stone-300 hover:text-amber-400 transition-colors text-sm font-sans tracking-[0.15em] uppercase py-2" onClick={() => setMobileMenuOpen(false)}>
-                Enterprise
+              <Link href="/contact" className="text-stone-300 hover:text-amber-400 transition-colors text-sm font-sans tracking-[0.15em] uppercase py-2" onClick={() => setMobileMenuOpen(false)}>
+                Contact
               </Link>
               <div className="flex gap-4 pt-4 border-t border-amber-500/20">
                 <Link href="/login" className="text-sm font-sans tracking-[0.1em] uppercase text-stone-300 hover:text-amber-400 transition-colors" onClick={() => setMobileMenuOpen(false)}>
@@ -106,12 +96,12 @@ export default function LandingPage() {
         )}
       </header>
 
-      {/* ==================== MAIN CONTENT ==================== */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 py-20 relative">
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-32 pb-20 relative">
         <div className="max-w-5xl relative">
           <div className="mb-6 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/5 border border-amber-500/20 backdrop-blur-sm">
             <Sparkles size={10} className="text-amber-400" />
-            <span className="text-amber-400 text-[10px] tracking-[0.3em] font-sans uppercase">Luxury Command Interface</span>
+            <span className="text-amber-400 text-[10px] tracking-[0.3em] font-sans uppercase">Kuriftu AI Engine</span>
             <Sparkles size={10} className="text-amber-400" />
           </div>
 
@@ -124,7 +114,7 @@ export default function LandingPage() {
           </h2>
           
           <p className="text-stone-400 text-base md:text-lg max-w-2xl mx-auto mb-12 font-light leading-relaxed">
-            The elite management interface for luxury hospitality.
+            The elite management interface for luxury hospitality powered by AI intelligence.
             <span className="block text-stone-500 text-xs mt-1">Synchronize your staff with surgical precision.</span>
           </p>
 
@@ -149,30 +139,30 @@ export default function LandingPage() {
         </div>
       </main>
 
-      {/* Features Grid */}
+      {/* Features Grid - Updated to reflect Vibe/Loyalty */}
       <section className="py-24 px-6 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-amber-500/5 to-transparent pointer-events-none" />
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-px bg-gradient-to-r from-amber-500/20 via-amber-500/5 to-amber-500/20">
           <div className="bg-black/40 backdrop-blur-sm p-8 transition-all duration-500 hover:bg-black/60 group border-r border-amber-500/10">
             <div className="mb-6 relative">
               <div className="absolute inset-0 blur-xl bg-amber-500/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <Shield size={32} className="text-amber-400 relative z-10" />
+              <span className="text-3xl font-serif text-amber-400 relative z-10">0-100</span>
             </div>
-            <h4 className="font-serif text-xl font-light text-white mb-3">Secure Access</h4>
+            <h4 className="font-serif text-xl font-light text-white mb-3">Vibe Grade</h4>
             <div className="w-10 h-px bg-amber-500/40 mb-4" />
             <p className="text-stone-400 text-sm leading-relaxed font-light">
-              Encrypted authentication layers for administrative control and staff privacy.
+              Real-time performance scoring based on manager reviews, peer feedback, and guest satisfaction.
             </p>
           </div>
           <div className="bg-black/40 backdrop-blur-sm p-8 transition-all duration-500 hover:bg-black/60 group border-r border-amber-500/10">
             <div className="mb-6 relative">
               <div className="absolute inset-0 blur-xl bg-amber-500/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <UserCircle size={32} className="text-amber-400 relative z-10" />
+              <span className="text-3xl font-serif text-amber-400 relative z-10">★</span>
             </div>
-            <h4 className="font-serif text-xl font-light text-white mb-3">Vibe Intel</h4>
+            <h4 className="font-serif text-xl font-light text-white mb-3">Loyalty Score</h4>
             <div className="w-10 h-px bg-amber-500/40 mb-4" />
             <p className="text-stone-400 text-sm leading-relaxed font-light">
-              Real-time performance feedback and loyalty metrics for every team member.
+              Retention and engagement metrics that track staff commitment and career growth.
             </p>
           </div>
           <div className="bg-black/40 backdrop-blur-sm p-8 transition-all duration-500 hover:bg-black/60 group">
@@ -180,10 +170,10 @@ export default function LandingPage() {
               <div className="absolute inset-0 blur-xl bg-amber-500/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <Hotel size={32} className="text-amber-400 relative z-10" />
             </div>
-            <h4 className="font-serif text-xl font-light text-white mb-3">Global Sync</h4>
+            <h4 className="font-serif text-xl font-light text-white mb-3">AI Shift Matching</h4>
             <div className="w-10 h-px bg-amber-500/40 mb-4" />
             <p className="text-stone-400 text-sm leading-relaxed font-light">
-              Instant availability updates across all hotel departments and shifts.
+              Intelligent scheduling that matches the right staff to the right shifts based on performance data.
             </p>
           </div>
         </div>
@@ -200,12 +190,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ==================== CLEAN FOOTER ==================== */}
+      {/* Updated Footer */}
       <footer className="relative bg-black/80 backdrop-blur-md border-t border-amber-500/10">
         <div className="max-w-6xl mx-auto px-6 py-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
-            
-            {/* Brand Column */}
             <div className="md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
                 <Crown className="text-amber-400" size={22} />
@@ -217,78 +205,47 @@ export default function LandingPage() {
                 </div>
               </div>
               <p className="text-stone-400 text-sm leading-relaxed mb-5 max-w-sm">
-                Redefining luxury hospitality management with precision, elegance, and world-class service intelligence.
+                Redefining luxury hospitality management with AI-driven performance intelligence.
               </p>
             </div>
 
-            {/* Quick Links */}
             <div>
               <h4 className="text-amber-400 text-[10px] font-sans tracking-[0.2em] uppercase mb-4">Platform</h4>
               <ul className="space-y-2">
-                <li><Link href="/features" className="text-stone-400 hover:text-amber-400 text-sm transition-colors">Features</Link></li>
-                <li><Link href="/security" className="text-stone-400 hover:text-amber-400 text-sm transition-colors">Security</Link></li>
-                <li><Link href="/integrations" className="text-stone-400 hover:text-amber-400 text-sm transition-colors">Integrations</Link></li>
+                <li><Link href="/what-we-do" className="text-stone-400 hover:text-amber-400 text-sm transition-colors">What We Do</Link></li>
+                <li><Link href="/about" className="text-stone-400 hover:text-amber-400 text-sm transition-colors">About Us</Link></li>
+                <li><Link href="/contact" className="text-stone-400 hover:text-amber-400 text-sm transition-colors">Contact</Link></li>
               </ul>
             </div>
 
-            {/* Company */}
             <div>
-              <h4 className="text-amber-400 text-[10px] font-sans tracking-[0.2em] uppercase mb-4">Company</h4>
+              <h4 className="text-amber-400 text-[10px] font-sans tracking-[0.2em] uppercase mb-4">Legal</h4>
               <ul className="space-y-2">
-                <li><Link href="/about" className="text-stone-400 hover:text-amber-400 text-sm transition-colors">About</Link></li>
-                <li><Link href="/careers" className="text-stone-400 hover:text-amber-400 text-sm transition-colors">Careers</Link></li>
-                <li><Link href="/contact" className="text-stone-400 hover:text-amber-400 text-sm transition-colors">Contact</Link></li>
+                <li><Link href="/privacy" className="text-stone-400 hover:text-amber-400 text-sm transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="text-stone-400 hover:text-amber-400 text-sm transition-colors">Terms of Service</Link></li>
+                <li><Link href="/cookies" className="text-stone-400 hover:text-amber-400 text-sm transition-colors">Cookie Settings</Link></li>
               </ul>
             </div>
           </div>
 
-          {/* Footer Bottom */}
           <div className="mt-10 pt-6 border-t border-amber-500/10 flex flex-col md:flex-row justify-between items-center gap-3">
             <div className="flex items-center gap-2">
               <Hotel size={10} className="text-amber-500/40" />
               <p className="text-stone-500 text-[9px] font-sans tracking-[0.2em] uppercase">
-                © 2026 Pulse Intelligence Systems.
+                © 2026 Pulse Intelligence Systems. All rights reserved.
               </p>
-            </div>
-            <div className="flex gap-6">
-              <Link href="/privacy" className="text-stone-500 hover:text-amber-400 text-[9px] font-sans tracking-[0.15em] uppercase transition-colors">
-                Privacy
-              </Link>
-              <Link href="/terms" className="text-stone-500 hover:text-amber-400 text-[9px] font-sans tracking-[0.15em] uppercase transition-colors">
-                Terms
-              </Link>
             </div>
           </div>
         </div>
       </footer>
 
-      {/* Custom Global Styles */}
       <style jsx global>{`
-        html {
-          scroll-behavior: smooth;
-        }
-        
-        ::selection {
-          background: #f59e0b;
-          color: #0a0806;
-        }
-        
-        ::-webkit-scrollbar {
-          width: 4px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: #0a0806;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: #f59e0b40;
-          border-radius: 2px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: #f59e0b;
-        }
+        html { scroll-behavior: smooth; }
+        ::selection { background: #f59e0b; color: #0a0806; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #0a0806; }
+        ::-webkit-scrollbar-thumb { background: #f59e0b40; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
       `}</style>
     </div>
   );

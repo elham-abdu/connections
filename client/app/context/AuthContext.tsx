@@ -7,7 +7,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   signIn: (email: string, password: string) => Promise<any>;
-  signUp: (email: string, password: string, fullName: string) => Promise<any>;
+  // Updated to accept metadata object
+  signUp: (email: string, password: string, metadata: { full_name: string; role: string }) => Promise<any>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
 }
@@ -15,10 +16,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // 1. Initialize Supabase inside useMemo so it only happens once and doesn't crash the build
   const supabase = useMemo(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
     return createClient(supabaseUrl, supabaseAnonKey);
   }, []);
 
@@ -36,7 +36,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // 2. Safety check: Only run if we are in the browser
     if (typeof window === "undefined") return;
 
     const getInitialSession = async () => {
@@ -65,15 +64,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return result;
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  // Updated signUp function
+  const signUp = async (email: string, password: string, metadata: { full_name: string; role: string }) => {
     return await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: {
-          full_name: fullName,
-          role: 'user', 
-        },
+        data: metadata, // metadata now passed directly to user_metadata
       },
     });
   };

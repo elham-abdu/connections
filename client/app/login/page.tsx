@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
-import { Crown, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Crown, Mail, Lock, Loader2, Eye, EyeOff, User, ArrowRight, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -24,14 +25,17 @@ export default function LoginPage() {
     try {
       let result;
       if (isSignUp) {
-        result = await signUp(email, password, fullName);
+        result = await signUp(email, password, { 
+          full_name: fullName, 
+          role: 'staff' 
+        });
         if (result.error) throw result.error;
         alert('Account created! Please check your email to verify.');
         setIsSignUp(false);
       } else {
         result = await signIn(email, password);
         if (result.error) throw result.error;
-        router.push('/staff');
+        router.push('/profile');
       }
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
@@ -41,115 +45,104 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-white to-stone-50 px-4 py-12">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-[#0a0806] flex items-center justify-center p-6 relative overflow-hidden font-sans">
+      {/* Background */}
+      <div className="fixed inset-0 bg-gradient-to-br from-[#0a0806] via-[#14110e] to-[#0a0806] -z-10" />
+      <div className="fixed inset-0 bg-[url('https://www.transparenttextures.com/patterns/subtle-grey.png')] opacity-20 -z-10" />
+      
+      <div className="max-w-md w-full bg-black/40 backdrop-blur-xl p-10 rounded-sm border border-amber-500/20 shadow-2xl">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center mb-4">
-            <div className="bg-gradient-to-r from-amber-400 to-amber-600 p-3 rounded-2xl shadow-lg">
-              <Crown className="w-10 h-10 text-white" />
-            </div>
+        <div className="text-center mb-10">
+          <Link href="/" className="inline-block mb-4 hover:opacity-80 transition-opacity">
+            <Crown className="text-amber-400 mx-auto" size={32} />
+          </Link>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/5 border border-amber-500/20 mb-4">
+            <Sparkles size={10} className="text-amber-400" />
+            <span className="text-amber-400 text-[8px] tracking-[0.3em] font-sans uppercase">Elite Access</span>
+            <Sparkles size={10} className="text-amber-400" />
           </div>
-          <h1 className="text-3xl font-serif font-bold text-stone-800">Pulse Staffing AI</h1>
-          <p className="text-stone-500 mt-2">Luxury Hospitality Management</p>
+          <h1 className="text-xl font-serif text-white tracking-[0.2em] uppercase italic">Pulse Interface</h1>
+          <p className="text-stone-500 text-[9px] tracking-[0.3em] uppercase mt-2">Luxury Hospitality Systems</p>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl border border-amber-100 p-8">
-          <h2 className="text-2xl font-serif font-bold text-stone-800 mb-6 text-center">
-            {isSignUp ? 'Create Account' : 'Welcome Back'}
-          </h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {isSignUp && (
-              <div>
-                <label className="block text-sm font-semibold text-stone-700 mb-2">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full p-4 pl-12 bg-stone-50 border-2 border-stone-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-stone-800"
-                    placeholder="John Doe"
-                    required={isSignUp}
-                  />
-                </div>
-              </div>
-            )}
-            
-            <div>
-              <label className="block text-sm font-semibold text-stone-700 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-4 pl-12 bg-stone-50 border-2 border-stone-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-stone-800"
-                  placeholder="manager@luxuryhotel.com"
-                  required
-                />
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {isSignUp && (
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500/50" size={16} />
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full bg-stone-900/50 border border-amber-500/10 rounded-sm py-3 pl-10 pr-4 text-white text-xs tracking-widest focus:border-amber-500/50 outline-none transition-all placeholder:text-stone-700"
+                placeholder="FULL NAME"
+                required={isSignUp}
+              />
             </div>
-            
-            <div>
-              <label className="block text-sm font-semibold text-stone-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-4 pl-12 pr-12 bg-stone-50 border-2 border-stone-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-stone-800"
-                  placeholder="••••••••"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5 text-stone-400" /> : <Eye className="w-5 h-5 text-stone-400" />}
-                </button>
-              </div>
-            </div>
-            
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center">
-                {error}
-              </div>
-            )}
-            
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-stone-800 to-stone-700 text-white font-bold py-4 rounded-2xl transition-all hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-              {isSignUp ? 'Create Account' : 'Sign In'}
-            </button>
-          </form>
+          )}
           
-          <div className="mt-6 text-center">
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500/50" size={16} />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-stone-900/50 border border-amber-500/10 rounded-sm py-3 pl-10 pr-4 text-white text-xs tracking-widest focus:border-amber-500/50 outline-none transition-all placeholder:text-stone-700"
+              placeholder="EMAIL ADDRESS"
+              required
+            />
+          </div>
+          
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500/50" size={16} />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-stone-900/50 border border-amber-500/10 rounded-sm py-3 pl-10 pr-10 text-white text-xs tracking-widest focus:border-amber-500/50 outline-none transition-all placeholder:text-stone-700"
+              placeholder="PASSWORD"
+              required
+            />
             <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-amber-600 hover:text-amber-700 text-sm font-medium"
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-600 hover:text-amber-400 transition-colors"
             >
-              {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-        </div>
+          
+          {error && (
+            <div className="p-3 bg-red-900/20 border border-red-900/50 rounded-sm text-red-400 text-[10px] uppercase tracking-widest text-center">
+              {error}
+            </div>
+          )}
+          
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-amber-600 to-amber-500 text-black py-4 rounded-sm font-sans font-bold text-[10px] tracking-[0.3em] uppercase hover:shadow-lg hover:shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
+          >
+            {loading ? <Loader2 className="animate-spin" size={16} /> : (
+              <>
+                {isSignUp ? 'Create Account' : 'Sign In'} <ArrowRight size={14} />
+              </>
+            )}
+          </button>
+        </form>
         
-        {/* Demo Credentials */}
-        <div className="mt-6 text-center text-stone-400 text-xs">
-          <p>Demo: demo@luxuryhotel.com / demo123</p>
-          <p className="mt-1">Admin: admin@luxuryhotel.com / admin123</p>
+        <div className="mt-8 text-center">
+          <button
+            onClick={() => setIsSignUp(!isSignUp)}
+            className="text-[9px] tracking-[0.2em] uppercase text-stone-500 hover:text-amber-400 transition-colors"
+          >
+            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Register"}
+          </button>
+        </div>
+
+        <div className="mt-6 text-center">
+          <Link href="/" className="text-[8px] tracking-[0.3em] uppercase text-stone-600 hover:text-stone-500 transition-colors">
+            ← Back to Home
+          </Link>
         </div>
       </div>
     </div>
