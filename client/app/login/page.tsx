@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
-import { Crown, Mail, Lock, Loader2, Eye, EyeOff, User, ArrowRight, Sparkles } from 'lucide-react';
+import { Crown, Mail, Lock, Loader2, Eye, EyeOff, User, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, supabase } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,9 +23,8 @@ export default function LoginPage() {
     setError('');
     
     try {
-      let result;
       if (isSignUp) {
-        result = await signUp(email, password, { 
+        const result = await signUp(email, password, { 
           full_name: fullName, 
           role: 'staff' 
         });
@@ -33,9 +32,26 @@ export default function LoginPage() {
         alert('Account created! Please check your email to verify.');
         setIsSignUp(false);
       } else {
-        result = await signIn(email, password);
-        if (result.error) throw result.error;
-        router.push('/profile');
+        // 1. Sign In
+        const { data, error } = await signIn(email, password);
+        if (error) throw error;
+        if (!data.user) throw new Error("No user found");
+
+        // 2. Fetch the profile to check the role using supabase from context
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) throw new Error("Profile not found");
+
+        // 3. Redirect based on role
+        if (profile.role === 'admin') {
+          router.push('/dashboard');
+        } else {
+          router.push('/profile');
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
@@ -46,20 +62,16 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0806] flex items-center justify-center p-6 relative overflow-hidden font-sans">
-      {/* Background */}
       <div className="fixed inset-0 bg-gradient-to-br from-[#0a0806] via-[#14110e] to-[#0a0806] -z-10" />
       <div className="fixed inset-0 bg-[url('https://www.transparenttextures.com/patterns/subtle-grey.png')] opacity-20 -z-10" />
       
       <div className="max-w-md w-full bg-black/40 backdrop-blur-xl p-10 rounded-sm border border-amber-500/20 shadow-2xl">
-        {/* Logo */}
         <div className="text-center mb-10">
           <Link href="/" className="inline-block mb-4 hover:opacity-80 transition-opacity">
             <Crown className="text-amber-400 mx-auto" size={32} />
           </Link>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/5 border border-amber-500/20 mb-4">
-            <Sparkles size={10} className="text-amber-400" />
             <span className="text-amber-400 text-[8px] tracking-[0.3em] font-sans uppercase">Elite Access</span>
-            <Sparkles size={10} className="text-amber-400" />
           </div>
           <h1 className="text-xl font-serif text-white tracking-[0.2em] uppercase italic">Pulse Interface</h1>
           <p className="text-stone-500 text-[9px] tracking-[0.3em] uppercase mt-2">Luxury Hospitality Systems</p>
