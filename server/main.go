@@ -16,15 +16,19 @@ import (
 
 // Profile struct matches your Supabase profiles table
 type Profile struct {
-	ID           string   `json:"id"`
-	Email        string   `json:"email"`
-	FullName     string   `json:"full_name"`
-	Role         string   `json:"role"`
-	Bio          string   `json:"bio"`
-	Experience   string   `json:"experience"`
-	Availability []string `json:"availability"`
-	VibeTags     []string `json:"vibe_tags"`
-	LoyaltyScore int      `json:"loyalty_score"`
+	ID               string   `json:"id"`
+	Email            string   `json:"email"`
+	FullName         string   `json:"full_name"`
+	Role             string   `json:"role"`
+	Bio              string   `json:"bio"`
+	Experience       string   `json:"experience"`
+	Availability     []string `json:"availability"`
+	VibeTags         []string `json:"vibe_tags"`
+	LoyaltyScore     int      `json:"loyalty_score"`
+	Phone            string   `json:"phone"`
+	Address          string   `json:"address"`
+	City             string   `json:"city"`
+	EmergencyContact string   `json:"emergency_contact"`
 }
 
 type Shift struct {
@@ -65,7 +69,6 @@ func verifyToken(c *gin.Context, sbClient *supabase.Client) (bool, string, strin
 func matchStaffWithAI(ctx context.Context, managerNeed string, staff []Profile) (string, error) {
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	
-	// Fallback if no API key
 	if apiKey == "" {
 		return generateSimpleMatch(managerNeed, staff), nil
 	}
@@ -110,7 +113,6 @@ Format:
 	return generateSimpleMatch(managerNeed, staff), nil
 }
 
-// generateSimpleMatch provides a fallback matching without AI
 func generateSimpleMatch(managerNeed string, staff []Profile) string {
 	recommendation := "Based on your requirements, we recommend:\n\n"
 	
@@ -164,7 +166,6 @@ func generateSimpleMatch(managerNeed string, staff []Profile) string {
 }
 
 func main() {
-	// Load environment variables
 	godotenv.Load()
 	
 	supabaseUrl := os.Getenv("SUPABASE_URL")
@@ -183,8 +184,8 @@ func main() {
 		allowedOrigins := []string{
 			"http://localhost:3000",
 			"http://localhost:3001",
-			"https://connections-git-main-koniabdu81-7200s-projects.vercel.app",
-			"https://connections-koniabdu81-7200s-projects.vercel.app",
+			"https://pulse-hospitality.vercel.app",
+			"https://pulse-hospitality-git-main.vercel.app",
 		}
 		origin := c.Request.Header.Get("Origin")
 		allowed := false
@@ -211,10 +212,7 @@ func main() {
 
 	// --- Health Check ---
 	r.GET("/api/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "healthy",
-			"service": "pulse-hospitality-api",
-		})
+		c.JSON(200, gin.H{"status": "healthy", "service": "pulse-hospitality-api"})
 	})
 
 	// --- Recruit AI Endpoint ---
@@ -228,7 +226,6 @@ func main() {
 			return
 		}
 		
-		// Fetch all staff from database
 		var allStaff []Profile
 		err := sbClient.DB.From("profiles").Select("*").Execute(&allStaff)
 		if err != nil {
@@ -236,7 +233,6 @@ func main() {
 			return
 		}
 		
-		// Filter by role if specified
 		var filteredStaff []Profile
 		if input.Role != "" {
 			for _, s := range allStaff {
@@ -248,7 +244,6 @@ func main() {
 			filteredStaff = allStaff
 		}
 		
-		// Use AI to match staff
 		ctx := context.Background()
 		recommendation, err := matchStaffWithAI(ctx, input.Requirement, filteredStaff)
 		if err != nil {
@@ -343,7 +338,7 @@ func main() {
 			c.JSON(200, notifications)
 		})
 
-		// Update staff profile (availability, bio, experience, etc.)
+		// Update staff profile
 		staffGroup.PATCH("/:id", func(c *gin.Context) {
 			authenticated, userID, role := verifyToken(c, sbClient)
 			if !authenticated {
@@ -380,10 +375,9 @@ func main() {
 		})
 	}
 
-	// --- Admin-only Routes ---
+	// --- Admin Routes ---
 	adminGroup := r.Group("/api/admin")
 	{
-		// Get all staff with full details (admin only)
 		adminGroup.GET("/staff", func(c *gin.Context) {
 			authenticated, _, role := verifyToken(c, sbClient)
 			if !authenticated || role != "admin" {
@@ -400,7 +394,6 @@ func main() {
 			c.JSON(200, staff)
 		})
 		
-		// Update any staff profile (admin only)
 		adminGroup.PATCH("/staff/:id", func(c *gin.Context) {
 			authenticated, _, role := verifyToken(c, sbClient)
 			if !authenticated || role != "admin" {
@@ -426,7 +419,6 @@ func main() {
 		})
 	}
 
-	// Start the server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
