@@ -21,7 +21,6 @@ import {
   Plus,
   Tag,
   Phone,
-  Mail,
   MapPin,
   Globe,
   Clock
@@ -77,7 +76,19 @@ export default function StaffProfile() {
         const headers = { "Authorization": `Bearer ${session?.access_token}` };
         
         const staffRes = await fetch(`${API_URL}/api/staff`, { headers });
-        const allStaff = await staffRes.json();
+        const responseData = await staffRes.json();
+        
+        // Handle different response formats
+        let allStaff = [];
+        if (Array.isArray(responseData)) {
+          allStaff = responseData;
+        } else if (responseData.data && Array.isArray(responseData.data)) {
+          allStaff = responseData.data;
+        } else {
+          console.error("Unexpected response format:", responseData);
+          allStaff = [];
+        }
+        
         const me = allStaff.find((s: any) => s.email === user?.email);
         
         if (me) {
@@ -351,7 +362,6 @@ export default function StaffProfile() {
                 <div className="text-stone-400 text-sm space-y-4">
                   {isEditingProfile ? (
                     <>
-                      {/* Bio */}
                       <div className="flex flex-col gap-1">
                         <label className="text-stone-500 text-[10px] uppercase tracking-wider">Bio</label>
                         <textarea 
@@ -363,7 +373,6 @@ export default function StaffProfile() {
                         />
                       </div>
                       
-                      {/* Experience */}
                       <div className="flex flex-col gap-1">
                         <label className="text-stone-500 text-[10px] uppercase tracking-wider">Experience</label>
                         <textarea 
@@ -375,7 +384,6 @@ export default function StaffProfile() {
                         />
                       </div>
                       
-                      {/* Vibe Tags */}
                       <div className="flex flex-col gap-1">
                         <label className="text-stone-500 text-[10px] uppercase tracking-wider flex items-center gap-1">
                           <Tag size={10} /> Vibe Tags
@@ -606,7 +614,7 @@ export default function StaffProfile() {
                 
                 {saveSuccess && (
                   <div className="mt-3 text-center text-green-400 text-xs animate-fadeIn">
-                    <Check size={14} className="inline mr-1" /> Availability saved successfully!
+                    <Check size={14} className="inline mr-1" /> Saved successfully!
                   </div>
                 )}
                 

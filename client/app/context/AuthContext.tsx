@@ -6,12 +6,12 @@ interface AuthContextType {
   supabase: SupabaseClient;
   user: User | null;
   session: Session | null;
-  profile: any | null; // Added profile
+  profile: any | null;
   signIn: (email: string, password: string) => Promise<any>;
   signUp: (email: string, password: string, metadata: { full_name: string; role: string }) => Promise<any>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
-  loading: boolean; // Added loading state
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,11 +25,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<any | null>(null); // State for profile
+  const [profile, setProfile] = useState<any | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true); // Track loading
+  const [loading, setLoading] = useState(true);
 
-  // The "Source of Truth" function
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
