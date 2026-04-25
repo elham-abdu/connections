@@ -13,12 +13,14 @@ import {
   X,
   LogOut,
   Shield,
-  Brain
+  Brain,
+  Star,
+  Edit2
 } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminDashboard() {
-  const { user, profile, loading: authLoading, signOut } = useAuth();
+  const { user, profile, loading: authLoading, signOut, session } = useAuth();
   const router = useRouter();
   
   const [requirement, setRequirement] = useState("");
@@ -26,27 +28,68 @@ export default function AdminDashboard() {
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [allStaff, setAllStaff] = useState<any[]>([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
+  const [editingScore, setEditingScore] = useState<string | null>(null);
+  const [tempScore, setTempScore] = useState<number>(0);
 
-  // SECURITY GUARD: This prevents non-admins from accessing the page
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+  // SECURITY GUARD
   useEffect(() => {
     if (!authLoading && (!user || profile?.role !== 'admin')) {
       router.push('/profile'); 
     }
   }, [user, profile, authLoading, router]);
 
-  // Show a loading screen while checking auth status
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#0a0806] flex items-center justify-center">
-        <Loader2 className="animate-spin text-amber-400" size={40} />
-      </div>
-    );
-  }
+  // Fetch all staff
+  const fetchAllStaff = async () => {
+    if (!session) return;
+    setLoadingStaff(true);
+    try {
+      const response = await fetch(`${API_URL}/api/admin/staff`, {
+        headers: { "Authorization": `Bearer ${session?.access_token}` }
+      });
+      const data = await response.json();
+      
+      // Handle different response formats
+      if (Array.isArray(data)) {
+        setAllStaff(data);
+      } else if (data.data && Array.isArray(data.data)) {
+        setAllStaff(data.data);
+      } else {
+        console.error("Unexpected response format:", data);
+        setAllStaff([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setAllStaff([]);
+    }
+    setLoadingStaff(false);
+  };
 
-  // If we are still here and not an admin, don't render anything
-  if (!user || profile?.role !== 'admin') {
-    return null;
-  }
+  useEffect(() => {
+    if (user && profile?.role === 'admin' && session) {
+      fetchAllStaff();
+    }
+  }, [user, profile, session]);
+
+  const updateLoyaltyScore = async (staffId: string, newScore: number) => {
+    try {
+      await fetch(`${API_URL}/api/admin/staff/${staffId}`, {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ loyalty_score: newScore })
+      });
+      setEditingScore(null);
+      fetchAllStaff();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleRecruit = async () => {
     setLoading(true);
@@ -56,7 +99,7 @@ export default function AdminDashboard() {
         ...(role && { role: role })
       };
       
-      const response = await fetch("http://localhost:8080/api/recruit", {
+      const response = await fetch(`${API_URL}/api/recruit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
@@ -69,9 +112,20 @@ export default function AdminDashboard() {
     setLoading(false);
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0806] flex items-center justify-center">
+        <Loader2 className="animate-spin text-amber-400" size={40} />
+      </div>
+    );
+  }
+
+  if (!user || profile?.role !== 'admin') {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0806] font-serif">
-      {/* Premium Background Gradient */}
       <div className="fixed inset-0 bg-gradient-to-br from-[#0a0806] via-[#14110e] to-[#0a0806] -z-10" />
       <div className="fixed inset-0 bg-[url('https://www.transparenttextures.com/patterns/subtle-grey.png')] opacity-20 -z-10" />
 
@@ -90,12 +144,6 @@ export default function AdminDashboard() {
                 </div>
               </Link>
 
-              <nav className="hidden md:flex items-center gap-8">
-                <Link href="/dashboard" className="text-amber-400 text-xs font-sans tracking-[0.15em] uppercase">
-                  Admin Portal
-                </Link>
-              </nav>
-
               <div className="hidden md:flex items-center gap-4">
                 <div className="flex items-center gap-3 px-3 py-1.5 bg-amber-500/10 rounded-full">
                   <Shield className="text-amber-400" size={14} />
@@ -112,7 +160,7 @@ export default function AdminDashboard() {
 
               <button 
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden text-amber-400 focus:outline-none"
+                className="md:hidden text-amber-400"
               >
                 {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
               </button>
@@ -123,15 +171,9 @@ export default function AdminDashboard() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-black/80 backdrop-blur-xl border-b border-amber-500/20">
             <div className="px-6 py-6 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Shield className="text-amber-400" size={14} />
-                  <span className="text-amber-400 text-xs">Admin Access</span>
-                </div>
-                <button onClick={() => signOut()} className="text-stone-300 hover:text-amber-400 text-sm">
-                  Sign Out
-                </button>
-              </div>
+              <button onClick={() => signOut()} className="text-stone-300 hover:text-amber-400 text-sm">
+                Sign Out
+              </button>
             </div>
           </div>
         )}
@@ -139,7 +181,7 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <main className="pt-28 pb-20 px-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           {/* Header Section */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/5 border border-amber-500/20 mb-6">
@@ -147,11 +189,11 @@ export default function AdminDashboard() {
               <span className="text-amber-400 text-[10px] tracking-[0.3em] font-sans uppercase">Kuriftu AI Engine</span>
             </div>
             <h1 className="text-5xl md:text-6xl font-serif font-light text-white mb-4">
-              Staffing Intelligence
+              Admin Dashboard
             </h1>
             <div className="w-20 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent mx-auto mb-6" />
             <p className="text-stone-400 max-w-2xl mx-auto">
-              Authorized Admin Access — AI-powered staff matching for luxury hospitality
+              Manage staff, track performance, and find the perfect match with AI
             </p>
           </div>
 
@@ -163,10 +205,91 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Main Card */}
+          {/* Staff Management Table */}
+          <div className="bg-black/40 backdrop-blur-xl border border-amber-500/20 rounded-sm overflow-hidden mb-8">
+            <div className="bg-gradient-to-r from-amber-600/20 to-amber-500/20 px-6 py-4 border-b border-amber-500/20">
+              <h2 className="font-serif text-white text-lg flex items-center gap-2">
+                <Users size={18} className="text-amber-400" />
+                Staff Directory
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-black/40 border-b border-amber-500/20">
+                  <tr>
+                    <th className="text-left py-3 px-4 text-stone-400 text-xs uppercase tracking-wider">Name</th>
+                    <th className="text-left py-3 px-4 text-stone-400 text-xs uppercase tracking-wider">Role</th>
+                    <th className="text-left py-3 px-4 text-stone-400 text-xs uppercase tracking-wider">Loyalty Score</th>
+                    <th className="text-left py-3 px-4 text-stone-400 text-xs uppercase tracking-wider">Vibe Tags</th>
+                    <th className="text-left py-3 px-4 text-stone-400 text-xs uppercase tracking-wider">Availability</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingStaff ? (
+                    <tr><td colSpan={5} className="text-center py-8"><Loader2 className="animate-spin text-amber-400 mx-auto" /></td></tr>
+                  ) : allStaff && allStaff.length > 0 ? (
+                    allStaff.map((staff) => (
+                      <tr key={staff.id} className="border-b border-amber-500/10 hover:bg-amber-500/5 transition-all">
+                        <td className="py-3 px-4 text-white text-sm">{staff.full_name}</td>
+                        <td className="py-3 px-4 text-stone-400 text-sm capitalize">{staff.role}</td>
+                        <td className="py-3 px-4">
+                          {editingScore === staff.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                value={tempScore}
+                                onChange={(e) => setTempScore(parseInt(e.target.value))}
+                                className="w-20 bg-black/50 border border-amber-500/30 rounded px-2 py-1 text-white text-sm"
+                                min="0"
+                                max="100"
+                              />
+                              <button onClick={() => updateLoyaltyScore(staff.id, tempScore)} className="text-green-400 text-xs">Save</button>
+                              <button onClick={() => setEditingScore(null)} className="text-red-400 text-xs">Cancel</button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1">
+                                <Star className="text-amber-400" size={14} />
+                                <span className="text-amber-400 text-sm font-bold">{staff.loyalty_score}%</span>
+                              </div>
+                              <button onClick={() => {
+                                setEditingScore(staff.id);
+                                setTempScore(staff.loyalty_score);
+                              }} className="text-stone-500 hover:text-amber-400">
+                                <Edit2 size={12} />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-wrap gap-1">
+                            {staff.vibe_tags?.slice(0, 2).map((tag: string) => (
+                              <span key={tag} className="bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full text-[10px]">{tag}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-stone-400 text-xs">
+                          {staff.availability?.slice(0, 3).join(", ")}{staff.availability?.length > 3 ? "..." : ""}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan={5} className="text-center py-8 text-stone-500">No staff members found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* AI Recruitment Section */}
           <div className="bg-black/40 backdrop-blur-xl border border-amber-500/20 rounded-sm overflow-hidden">
+            <div className="bg-gradient-to-r from-amber-600/20 to-amber-500/20 px-6 py-4 border-b border-amber-500/20">
+              <h2 className="font-serif text-white text-lg flex items-center gap-2">
+                <Brain size={18} className="text-amber-400" />
+                AI Staff Matching
+              </h2>
+            </div>
             <div className="p-8">
-              {/* Role Filter */}
               <div className="mb-8">
                 <label className="block text-stone-400 text-xs tracking-wider uppercase mb-3">
                   Filter by Role (Optional)
@@ -184,7 +307,6 @@ export default function AdminDashboard() {
                 </select>
               </div>
 
-              {/* Staffing Requirement */}
               <div className="mb-8">
                 <label className="block text-stone-400 text-xs tracking-wider uppercase mb-3 flex items-center gap-2">
                   <Users className="w-4 h-4 text-amber-500/60" />
@@ -199,7 +321,6 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              {/* Submit Button */}
               <button
                 onClick={handleRecruit}
                 disabled={loading || !requirement.trim()}
@@ -220,7 +341,6 @@ export default function AdminDashboard() {
                 </span>
               </button>
 
-              {/* Results */}
               {result && (
                 <div className="mt-8 animate-fadeIn">
                   <div className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 rounded-sm overflow-hidden">
@@ -245,7 +365,6 @@ export default function AdminDashboard() {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="relative bg-black/80 backdrop-blur-md border-t border-amber-500/10 mt-20">
         <div className="max-w-6xl mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">

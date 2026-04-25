@@ -1,16 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/generative-ai-go/genai"
 	"github.com/joho/godotenv"
-	"github.com/nedpals/supabase-go"
 	"google.golang.org/api/option"
 )
 
@@ -29,6 +33,7 @@ type Profile struct {
 	Address          string   `json:"address"`
 	City             string   `json:"city"`
 	EmergencyContact string   `json:"emergency_contact"`
+	Preferences      []string `json:"preferences"`
 }
 
 type Shift struct {
@@ -48,28 +53,101 @@ type Notification struct {
 	CreatedAt string `json:"created_at"`
 }
 
-func verifyToken(c *gin.Context, sbClient *supabase.Client) (bool, string, string) {
+var supabaseURL string
+var supabaseKey string
+
+// Direct HTTP client to Supabase
+func supabaseRequest(method, path string, body interface{}, token string) ([]byte, error) {
+	url := supabaseURL + "/rest/v1/" + path
+	
+	var reqBody io.Reader
+	if body != nil {
+		jsonBody, err := json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+		reqBody = bytes.NewBuffer(jsonBody)
+	}
+	
+	req, err := http.NewRequest(method, url, reqBody)
+	if err != nil {
+		return nil, err
+	}
+	
+	req.Header.Set("apikey", supabaseKey)
+	req.Header.Set("Content-Type", "application/json")
+	
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	
+	return io.ReadAll(resp.Body)
+}
+
+func verifyToken(c *gin.Context) (bool, string, string) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
+		fmt.Println("No auth header")
 		return false, "", ""
 	}
 	token := strings.TrimPrefix(authHeader, "Bearer ")
-	user, err := sbClient.Auth.User(c.Request.Context(), token)
-	if err != nil || user == nil {
+	
+	// Verify token with Supabase
+	url := supabaseURL + "/auth/v1/user"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Println("Error creating request:", err)
 		return false, "", ""
 	}
-	role := "staff"
-	if userRole, ok := user.UserMetadata["role"]; ok {
-		role = userRole.(string)
+	req.Header.Set("apikey", supabaseKey)
+	req.Header.Set("Authorization", "Bearer "+token)
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error making request:", err)
+		return false, "", ""
 	}
-	return true, user.ID, role
+	defer resp.Body.Close()
+	
+	body, _ := io.ReadAll(resp.Body)
+	
+	if resp.StatusCode != 200 {
+		fmt.Printf("Token validation failed with status: %d\n", resp.StatusCode)
+		return false, "", ""
+	}
+	
+	var userData map[string]interface{}
+	json.Unmarshal(body, &userData)
+	
+	role := "staff"
+	if userMeta, ok := userData["user_metadata"].(map[string]interface{}); ok {
+		if userRole, ok := userMeta["role"]; ok {
+			role = userRole.(string)
+		}
+	}
+	
+	userID := ""
+	if id, ok := userData["id"]; ok {
+		userID = id.(string)
+	}
+	
+	fmt.Println("User validated:", userID, "Role:", role)
+	return true, userID, role
 }
 
 // matchStaffWithAI uses Gemini AI to find the best staff matches
 func matchStaffWithAI(ctx context.Context, managerNeed string, staff []Profile) (string, error) {
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	
-	if apiKey == "" {
+	if apiKey == "" || len(staff) == 0 {
 		return generateSimpleMatch(managerNeed, staff), nil
 	}
 
@@ -82,22 +160,40 @@ func matchStaffWithAI(ctx context.Context, managerNeed string, staff []Profile) 
 	model := client.GenerativeModel("gemini-1.5-flash")
 	
 	var staffList strings.Builder
+	staffList.WriteString("🔴 IMPORTANT: YOU MUST ONLY USE THESE EXACT STAFF NAMES. DO NOT INVENT OR CREATE ANY STAFF NAMES. 🔴\n\n")
+	
 	for i, s := range staff {
-		staffList.WriteString(fmt.Sprintf("%d. %s (%s) - Tags: %s, Loyalty: %d\n", 
-			i+1, s.FullName, s.Role, strings.Join(s.VibeTags, ", "), s.LoyaltyScore))
+		availabilityStr := "Not specified"
+		if len(s.Availability) > 0 {
+			availabilityStr = strings.Join(s.Availability, ", ")
+		}
+		
+		vibeStr := "None"
+		if len(s.VibeTags) > 0 {
+			vibeStr = strings.Join(s.VibeTags, ", ")
+		}
+		
+		staffList.WriteString(fmt.Sprintf("%d. NAME: %s | ROLE: %s | LOYALTY: %d%% | TAGS: %s | AVAILABLE: %s\n", 
+			i+1, s.FullName, s.Role, s.LoyaltyScore, vibeStr, availabilityStr))
 	}
 	
-	prompt := fmt.Sprintf(`Find the best 3 staff members for: "%s"
+	prompt := fmt.Sprintf(`REQUIREMENT: "%s"
 
-Available staff:
+AVAILABLE STAFF (USE ONLY THESE):
 %s
 
-Return exactly 3 matches. Put PERFECT matches first. Be brief.
+Respond with ONLY staff from the list above. Format:
+🎯 BEST MATCH:
+• [EXACT NAME FROM LIST] (Role) - Loyalty: X%
+Reason: [short reason]
 
-Format:
-1. Name (Role) - Reason: why
-2. Name (Role) - Reason: why
-3. Name (Role) - Reason: why`, managerNeed, staffList.String())
+🥈 SECOND BEST:
+• [EXACT NAME FROM LIST] (Role) - Loyalty: X%
+Reason: [short reason]
+
+🥉 THIRD BEST:
+• [EXACT NAME FROM LIST] (Role) - Loyalty: X%
+Reason: [short reason]`, managerNeed, staffList.String())
 
 	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
@@ -113,8 +209,13 @@ Format:
 	return generateSimpleMatch(managerNeed, staff), nil
 }
 
+// generateSimpleMatch provides fallback matching without AI
 func generateSimpleMatch(managerNeed string, staff []Profile) string {
-	recommendation := "Based on your requirements, we recommend:\n\n"
+	if len(staff) == 0 {
+		return "❌ No staff members found in the database."
+	}
+	
+	recommendation := "🎯 STAFF RECOMMENDATIONS (From Your Real Database):\n\n"
 	
 	type ScoredStaff struct {
 		Staff Profile
@@ -126,15 +227,23 @@ func generateSimpleMatch(managerNeed string, staff []Profile) string {
 	
 	for _, s := range staff {
 		score := 0
+		
 		for _, tag := range s.VibeTags {
 			if strings.Contains(needLower, strings.ToLower(tag)) {
-				score += 10
+				score += 30
 			}
 		}
+		
 		if strings.Contains(needLower, strings.ToLower(s.Role)) {
-			score += 5
+			score += 20
 		}
-		score += s.LoyaltyScore / 20
+		
+		score += s.LoyaltyScore / 2
+		
+		if len(s.Availability) > 0 {
+			score += 10
+		}
+		
 		scored = append(scored, ScoredStaff{Staff: s, Score: score})
 	}
 	
@@ -152,14 +261,27 @@ func generateSimpleMatch(managerNeed string, staff []Profile) string {
 		maxMatches = len(scored)
 	}
 	
-	for i := 0; i < maxMatches; i++ {
-		s := scored[i].Staff
-		recommendation += fmt.Sprintf("• %s (%s) - Vibe Tags: %s, Loyalty: %d%%\n", 
-			s.FullName, s.Role, strings.Join(s.VibeTags, ", "), s.LoyaltyScore)
-	}
+	titles := []string{"🎯 BEST MATCH", "🥈 SECOND BEST", "🥉 THIRD BEST"}
 	
-	if recommendation == "Based on your requirements, we recommend:\n\n" {
-		recommendation = "No matching staff found for your requirements."
+	for i := 0; i < maxMatches; i++ {
+		s := scored[i].Staff  // FIXED: using s.Staff directly
+		availabilityStr := "Flexible"
+		if len(s.Availability) > 0 {
+			availabilityStr = strings.Join(s.Availability, ", ")
+		}
+		
+		vibeStr := "None"
+		if len(s.VibeTags) > 0 {
+			vibeStr = strings.Join(s.VibeTags, ", ")
+		}
+		
+		recommendation += fmt.Sprintf("\n%s:\n", titles[i])
+		recommendation += fmt.Sprintf("• %s (%s)\n", s.FullName, s.Role)  // FIXED: using s.FullName directly
+		recommendation += fmt.Sprintf("  Loyalty Score: %d%%\n", s.LoyaltyScore)  // FIXED: using s.LoyaltyScore directly
+		recommendation += fmt.Sprintf("  Available: %s\n", availabilityStr)
+		recommendation += fmt.Sprintf("  Vibe Tags: %s\n", vibeStr)
+		recommendation += fmt.Sprintf("  Match Score: %d/100\n", scored[i].Score)
+		recommendation += "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
 	}
 	
 	return recommendation
@@ -168,37 +290,21 @@ func generateSimpleMatch(managerNeed string, staff []Profile) string {
 func main() {
 	godotenv.Load()
 	
-	supabaseUrl := os.Getenv("SUPABASE_URL")
-	supabaseKey := os.Getenv("SUPABASE_KEY")
+	supabaseURL = os.Getenv("SUPABASE_URL")
+	supabaseKey = os.Getenv("SUPABASE_KEY")
 	
-	if supabaseUrl == "" || supabaseKey == "" {
+	if supabaseURL == "" || supabaseKey == "" {
 		panic("SUPABASE_URL and SUPABASE_KEY must be set in .env file")
 	}
 	
-	sbClient := supabase.CreateClient(supabaseUrl, supabaseKey)
+	fmt.Println("🚀 Pulse Hospitality API Server Starting...")
+	fmt.Println("✅ Supabase Connected")
 
 	r := gin.Default()
 
 	// CORS Middleware
 	r.Use(func(c *gin.Context) {
-		allowedOrigins := []string{
-			"http://localhost:3000",
-			"http://localhost:3001",
-			"https://pulse-hospitality.vercel.app",
-			"https://pulse-hospitality-git-main.vercel.app",
-		}
-		origin := c.Request.Header.Get("Origin")
-		allowed := false
-		for _, o := range allowedOrigins {
-			if o == origin {
-				allowed = true
-				break
-			}
-		}
-		
-		if allowed {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-		}
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -210,12 +316,12 @@ func main() {
 		c.Next()
 	})
 
-	// --- Health Check ---
+	// Health Check
 	r.GET("/api/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "healthy", "service": "pulse-hospitality-api"})
 	})
 
-	// --- Recruit AI Endpoint ---
+	// Recruit AI Endpoint
 	r.POST("/api/recruit", func(c *gin.Context) {
 		var input struct {
 			Requirement string `json:"requirement"`
@@ -226,17 +332,19 @@ func main() {
 			return
 		}
 		
-		var allStaff []Profile
-		err := sbClient.DB.From("profiles").Select("*").Execute(&allStaff)
+		data, err := supabaseRequest("GET", "profiles?select=*", nil, "")
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to fetch staff"})
 			return
 		}
 		
+		var allStaff []Profile
+		json.Unmarshal(data, &allStaff)
+		
 		var filteredStaff []Profile
 		if input.Role != "" {
 			for _, s := range allStaff {
-				if s.Role == input.Role {
+				if strings.ToLower(s.Role) == strings.ToLower(input.Role) {
 					filteredStaff = append(filteredStaff, s)
 				}
 			}
@@ -247,48 +355,50 @@ func main() {
 		ctx := context.Background()
 		recommendation, err := matchStaffWithAI(ctx, input.Requirement, filteredStaff)
 		if err != nil {
-			c.JSON(500, gin.H{"error": "AI matching failed: " + err.Error()})
+			c.JSON(500, gin.H{"error": "AI matching failed"})
 			return
 		}
 		
 		c.JSON(200, gin.H{"recommendation": recommendation})
 	})
 
-	// --- Staff Routes ---
+	// Staff Routes
 	staffGroup := r.Group("/api/staff")
 	{
-		// Get all staff
 		staffGroup.GET("", func(c *gin.Context) {
-			authenticated, _, _ := verifyToken(c, sbClient)
+			authenticated, _, _ := verifyToken(c)
 			if !authenticated {
 				c.JSON(401, gin.H{"error": "Unauthorized"})
 				return
 			}
 			
-			var staff []Profile
-			err := sbClient.DB.From("profiles").Select("*").Execute(&staff)
+			data, err := supabaseRequest("GET", "profiles?select=*", nil, "")
 			if err != nil {
 				c.JSON(500, gin.H{"error": "Failed to fetch staff"})
 				return
 			}
+			
+			var staff []Profile
+			json.Unmarshal(data, &staff)
 			c.JSON(200, staff)
 		})
 
-		// Get staff by ID
 		staffGroup.GET("/:id", func(c *gin.Context) {
-			authenticated, _, _ := verifyToken(c, sbClient)
+			authenticated, _, _ := verifyToken(c)
 			if !authenticated {
 				c.JSON(401, gin.H{"error": "Unauthorized"})
 				return
 			}
 			
 			id := c.Param("id")
-			var staff []Profile
-			err := sbClient.DB.From("profiles").Select("*").Eq("id", id).Execute(&staff)
+			data, err := supabaseRequest("GET", "profiles?select=*&id=eq."+id, nil, "")
 			if err != nil {
 				c.JSON(500, gin.H{"error": "Failed to fetch staff"})
 				return
 			}
+			
+			var staff []Profile
+			json.Unmarshal(data, &staff)
 			if len(staff) == 0 {
 				c.JSON(404, gin.H{"error": "Staff not found"})
 				return
@@ -296,41 +406,42 @@ func main() {
 			c.JSON(200, staff[0])
 		})
 
-		// Get staff shifts
 		staffGroup.GET("/:id/shifts", func(c *gin.Context) {
-			authenticated, _, _ := verifyToken(c, sbClient)
+			authenticated, _, _ := verifyToken(c)
 			if !authenticated {
 				c.JSON(401, gin.H{"error": "Unauthorized"})
 				return
 			}
 			
 			id := c.Param("id")
-			var shifts []Shift
-			err := sbClient.DB.From("shifts").Select("*").Eq("staff_id", id).Execute(&shifts)
+			data, err := supabaseRequest("GET", "shifts?select=*&staff_id=eq."+id, nil, "")
 			if err != nil {
 				c.JSON(200, []Shift{})
 				return
 			}
+			
+			var shifts []Shift
+			json.Unmarshal(data, &shifts)
 			c.JSON(200, shifts)
 		})
 
-		// Get staff notifications
 		staffGroup.GET("/:id/notifications", func(c *gin.Context) {
-			authenticated, _, _ := verifyToken(c, sbClient)
+			authenticated, _, _ := verifyToken(c)
 			if !authenticated {
 				c.JSON(401, gin.H{"error": "Unauthorized"})
 				return
 			}
 			
 			id := c.Param("id")
-			var notifications []Notification
-			err := sbClient.DB.From("notifications").Select("*").Eq("staff_id", id).Execute(&notifications)
+			data, err := supabaseRequest("GET", "notifications?select=*&staff_id=eq."+id, nil, "")
 			if err != nil {
 				c.JSON(200, []Notification{})
 				return
 			}
 			
-			// Sort by created_at descending (newest first)
+			var notifications []Notification
+			json.Unmarshal(data, &notifications)
+			
 			sort.Slice(notifications, func(i, j int) bool {
 				return notifications[i].CreatedAt > notifications[j].CreatedAt
 			})
@@ -338,64 +449,63 @@ func main() {
 			c.JSON(200, notifications)
 		})
 
-		// Update staff profile
 		staffGroup.PATCH("/:id", func(c *gin.Context) {
-			authenticated, userID, role := verifyToken(c, sbClient)
+			authenticated, userID, role := verifyToken(c)
 			if !authenticated {
 				c.JSON(401, gin.H{"error": "Unauthorized"})
 				return
 			}
-
+			
 			id := c.Param("id")
+			
+			if role != "admin" && id != userID {
+				c.JSON(403, gin.H{"error": "Forbidden"})
+				return
+			}
+			
 			var updateData map[string]interface{}
 			if err := c.ShouldBindJSON(&updateData); err != nil {
 				c.JSON(400, gin.H{"error": err.Error()})
 				return
 			}
-
-			// Security: If not admin, check if they own the profile
-			if role != "admin" && id != userID {
-				c.JSON(403, gin.H{"error": "Forbidden: Not your profile"})
-				return
-			}
-
-			var results []map[string]interface{}
-			err := sbClient.DB.From("profiles").Update(updateData).Eq("id", id).Execute(&results)
+			
+			_, err := supabaseRequest("PATCH", "profiles?id=eq."+id, updateData, "")
 			if err != nil {
 				c.JSON(500, gin.H{"error": err.Error()})
 				return
 			}
 			
-			if len(results) == 0 {
-				c.JSON(404, gin.H{"error": "Profile not found"})
-				return
-			}
+			data, _ := supabaseRequest("GET", "profiles?select=*&id=eq."+id, nil, "")
+			var updated []Profile
+			json.Unmarshal(data, &updated)
 			
-			c.JSON(200, results[0])
+			c.JSON(200, updated[0])
 		})
 	}
 
-	// --- Admin Routes ---
+	// Admin Routes
 	adminGroup := r.Group("/api/admin")
 	{
 		adminGroup.GET("/staff", func(c *gin.Context) {
-			authenticated, _, role := verifyToken(c, sbClient)
+			authenticated, _, role := verifyToken(c)
 			if !authenticated || role != "admin" {
 				c.JSON(403, gin.H{"error": "Admin access required"})
 				return
 			}
 			
-			var staff []Profile
-			err := sbClient.DB.From("profiles").Select("*").Execute(&staff)
+			data, err := supabaseRequest("GET", "profiles?select=*", nil, "")
 			if err != nil {
 				c.JSON(500, gin.H{"error": "Failed to fetch staff"})
 				return
 			}
+			
+			var staff []Profile
+			json.Unmarshal(data, &staff)
 			c.JSON(200, staff)
 		})
 		
 		adminGroup.PATCH("/staff/:id", func(c *gin.Context) {
-			authenticated, _, role := verifyToken(c, sbClient)
+			authenticated, _, role := verifyToken(c)
 			if !authenticated || role != "admin" {
 				c.JSON(403, gin.H{"error": "Admin access required"})
 				return
@@ -408,14 +518,17 @@ func main() {
 				return
 			}
 			
-			var results []map[string]interface{}
-			err := sbClient.DB.From("profiles").Update(updateData).Eq("id", id).Execute(&results)
+			_, err := supabaseRequest("PATCH", "profiles?id=eq."+id, updateData, "")
 			if err != nil {
 				c.JSON(500, gin.H{"error": err.Error()})
 				return
 			}
 			
-			c.JSON(200, results[0])
+			data, _ := supabaseRequest("GET", "profiles?select=*&id=eq."+id, nil, "")
+			var updated []Profile
+			json.Unmarshal(data, &updated)
+			
+			c.JSON(200, updated[0])
 		})
 	}
 
@@ -424,5 +537,6 @@ func main() {
 		port = "8080"
 	}
 	
+	fmt.Printf("\n✅ Server running on http://localhost:%s\n", port)
 	r.Run(":" + port)
 }

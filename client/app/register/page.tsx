@@ -2,13 +2,14 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Crown, Mail, Lock, User, Loader2, ArrowRight, Sparkles } from "lucide-react";
+import { Crown, Mail, Lock, User, Loader2, ArrowRight, Sparkles, Briefcase } from "lucide-react";
 import Link from "next/link";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState("waiter");
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function RegisterPage() {
     try {
       const { error } = await signUp(email, password, { 
         full_name: fullName, 
-        role: 'staff' 
+        role: role  // Now using selected role instead of hardcoded 'staff'
       });
       if (error) throw error;
       
@@ -53,6 +54,7 @@ export default function RegisterPage() {
         </div>
 
         <form onSubmit={handleRegister} className="space-y-6">
+          {/* Full Name */}
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500/50" size={16} />
             <input
@@ -63,6 +65,8 @@ export default function RegisterPage() {
               required
             />
           </div>
+
+          {/* Email */}
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500/50" size={16} />
             <input
@@ -73,6 +77,8 @@ export default function RegisterPage() {
               required
             />
           </div>
+
+          {/* Password */}
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500/50" size={16} />
             <input
@@ -82,6 +88,29 @@ export default function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)} 
               required
             />
+          </div>
+
+          {/* Role Selection */}
+          <div className="relative">
+            <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500/50" size={16} />
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full bg-stone-900/50 border border-amber-500/10 rounded-sm py-3 pl-10 pr-4 text-white text-xs tracking-widest focus:border-amber-500/50 outline-none transition-all cursor-pointer appearance-none"
+              required
+            >
+              <option value="waiter">Waiter / Waitress</option>
+              <option value="host">Host / Hostess</option>
+              <option value="bartender">Bartender</option>
+              <option value="manager">Manager</option>
+              <option value="chef">Chef / Cook</option>
+              <option value="housekeeping">Housekeeping</option>
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              <svg className="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
 
           <button
