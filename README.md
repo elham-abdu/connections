@@ -131,6 +131,4 @@ Pulse Hospitality Intelligence System demonstrates:
 
 
 ## 📧Contact
-- Demo Video: [5-min systems walkthrough]
-
-Built for Systems+AI Research 🇨🇦
+- 
