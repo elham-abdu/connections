@@ -128,5 +128,4 @@ Pulse Hospitality Intelligence System demonstrates:
 4. Real-time constraint satisfaction for scheduling problems
 
 
-## 📧Contact
-- 
+## demo vid- [https://www.loom.com/share/ed0b6936b90e45529e1f08b9b5407e4c] 
