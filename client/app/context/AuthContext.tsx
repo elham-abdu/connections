@@ -30,13 +30,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
+    console.log("Fetching profile for user:", userId);
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
       
-    if (data) {
+    if (error) {
+      console.error("Error fetching profile:", error);
+      setProfile(null);
+      setIsAdmin(false);
+    } else if (data) {
+      console.log("Profile fetched:", data);
       setProfile(data);
       setIsAdmin(data.role === 'admin');
     } else {

@@ -38,6 +38,7 @@ export default function StaffProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Edit mode states
@@ -76,22 +77,13 @@ export default function StaffProfile() {
         const headers = { "Authorization": `Bearer ${session?.access_token}` };
         
         const staffRes = await fetch(`${API_URL}/api/staff`, { headers });
-        const responseData = await staffRes.json();
+        const allStaff = await staffRes.json();
         
-        // Handle different response formats
-        let allStaff = [];
-        if (Array.isArray(responseData)) {
-          allStaff = responseData;
-        } else if (responseData.data && Array.isArray(responseData.data)) {
-          allStaff = responseData.data;
-        } else {
-          console.error("Unexpected response format:", responseData);
-          allStaff = [];
-        }
-        
+        // Find the current user by email
         const me = allStaff.find((s: any) => s.email === user?.email);
         
         if (me) {
+          console.log("Loaded profile:", me);
           setProfile(me);
           const availability = me.availability || [];
           setMyDates(availability);
@@ -103,8 +95,11 @@ export default function StaffProfile() {
           setEditAddress(me.address || "");
           setEditCity(me.city || "");
           setEditEmergencyContact(me.emergency_contact || "");
+        } else {
+          console.error("User not found in staff list");
         }
         
+        // Fetch shifts (optional)
         try {
           const shiftsRes = await fetch(`${API_URL}/api/staff/${user.id}/shifts`, { headers });
           if (shiftsRes.ok) {
@@ -115,6 +110,7 @@ export default function StaffProfile() {
           setShifts([]);
         }
         
+        // Fetch notifications (optional)
         try {
           const notifRes = await fetch(`${API_URL}/api/staff/${user.id}/notifications`, { headers });
           if (notifRes.ok) {
@@ -131,18 +127,22 @@ export default function StaffProfile() {
       setLoading(false);
     };
     if (session) loadData();
-  }, [session, user]);
+  }, [session, user, API_URL]);
 
   // Toggle availability in temp state (doesn't save yet)
   const toggleTempDay = (day: string) => {
     setTempDates(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+    setSaveError("");
   };
 
   // Save availability to database
   const saveAvailability = async () => {
     if (!profile?.id) return;
     setSaving(true);
+    setSaveError("");
     try {
+      console.log("Saving availability:", tempDates);
+      
       const response = await fetch(`${API_URL}/api/staff/${profile.id}`, {
         method: "PATCH",
         headers: { 
@@ -151,16 +151,23 @@ export default function StaffProfile() {
         },
         body: JSON.stringify({ availability: tempDates }),
       });
+      
+      const data = await response.json();
+      
       if (response.ok) {
-        const updated = await response.json();
         setMyDates(tempDates);
-        setProfile(updated);
+        setProfile(data);
         setSaveSuccess(true);
         setIsEditingAvailability(false);
         setTimeout(() => setSaveSuccess(false), 3000);
+        console.log("Availability saved successfully");
+      } else {
+        console.error("Save failed:", data);
+        setSaveError(data.error || "Failed to save");
       }
     } catch (err) {
       console.error(err);
+      setSaveError("Connection error. Is the backend running?");
     }
     setSaving(false);
   };
@@ -169,6 +176,7 @@ export default function StaffProfile() {
   const cancelAvailabilityEdit = () => {
     setTempDates(myDates);
     setIsEditingAvailability(false);
+    setSaveError("");
   };
 
   const addVibeTag = () => {
@@ -185,32 +193,44 @@ export default function StaffProfile() {
   const saveProfile = async () => {
     if (!profile?.id) return;
     setSaving(true);
+    setSaveError("");
     try {
+      const updateData = { 
+        bio: editBio,
+        experience: editExp,
+        vibe_tags: editVibeTags,
+        phone: editPhone,
+        address: editAddress,
+        city: editCity,
+        emergency_contact: editEmergencyContact
+      };
+      
+      console.log("Saving profile:", updateData);
+      
       const response = await fetch(`${API_URL}/api/staff/${profile.id}`, {
         method: "PATCH",
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session?.access_token}` 
         },
-        body: JSON.stringify({ 
-          bio: editBio,
-          experience: editExp,
-          vibe_tags: editVibeTags,
-          phone: editPhone,
-          address: editAddress,
-          city: editCity,
-          emergency_contact: editEmergencyContact
-        }),
+        body: JSON.stringify(updateData),
       });
+      
+      const data = await response.json();
+      
       if (response.ok) {
-        const updated = await response.json();
-        setProfile(updated);
+        setProfile(data);
         setSaveSuccess(true);
         setIsEditingProfile(false);
         setTimeout(() => setSaveSuccess(false), 3000);
+        console.log("Profile saved successfully");
+      } else {
+        console.error("Save failed:", data);
+        setSaveError(data.error || "Failed to save");
       }
     } catch (err) {
       console.error(err);
+      setSaveError("Connection error. Is the backend running?");
     }
     setSaving(false);
   };
@@ -224,6 +244,13 @@ export default function StaffProfile() {
     setEditAddress(profile?.address || "");
     setEditCity(profile?.city || "");
     setEditEmergencyContact(profile?.emergency_contact || "");
+    setSaveError("");
+  };
+
+  // Get first name for welcome message
+  const getFirstName = () => {
+    if (!profile?.full_name) return "Staff";
+    return profile.full_name.split(" ")[0];
   };
 
   if (authLoading || loading) {
@@ -310,10 +337,17 @@ export default function StaffProfile() {
               <span className="text-amber-400 text-[10px] tracking-[0.3em] font-sans uppercase">Staff Dashboard</span>
             </div>
             <h1 className="text-3xl md:text-4xl font-serif font-light text-white">
-              Welcome back, <span className="text-amber-400 italic">{profile?.full_name?.split(" ")[0] || "Staff"}</span>
+              Welcome back, <span className="text-amber-400 italic">{getFirstName()}</span>
             </h1>
             <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent mx-auto mt-4" />
           </div>
+
+          {/* Error Message */}
+          {saveError && (
+            <div className="mb-6 p-3 bg-red-500/20 border border-red-500/50 rounded-sm text-red-400 text-xs text-center">
+              {saveError}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* LEFT COLUMN: Profile & Contact */}
@@ -326,8 +360,8 @@ export default function StaffProfile() {
                       <User className="text-black" size={24} />
                     </div>
                     <div>
-                      <h2 className="text-xl font-serif text-white">{profile?.full_name}</h2>
-                      <p className="text-stone-400 text-sm capitalize">{profile?.role}</p>
+                      <h2 className="text-xl font-serif text-white">{profile?.full_name || "Staff Member"}</h2>
+                      <p className="text-stone-400 text-sm capitalize">{profile?.role || "Staff"}</p>
                     </div>
                   </div>
                   
