@@ -92,7 +92,6 @@ What is the latency impact of LLM integration at production scale? Benchmark Gem
 How does real-time feedback from managers affect heuristic weights? User study with 50 hospitality managers |
 Can the system learn optimal weights through Bayesian optimization? Implement adaptive weight adjustment based on successful assignments 
 
-
 ##  Technical Challenges Solved
 
 1. LLM Response Validation: Verifying Gemini doesn't hallucinate staff names
