@@ -1,6 +1,4 @@
 # Pulse Hospitality Intelligence System – Academic Research Overview
-
-
 ##  Research Problem Statement
 
 Optimization Challenge: How can we model and solve the multi-variable staffing assignment problem in service industries where success depends on both quantifiable metrics (availability, experience) and **qualitative attributes** (personality traits, soft skills)?
@@ -76,7 +74,7 @@ notifications: id, staff_id, title, message, created_at
 
 ##  Future Research Directions
 
-### Phase 2: Algorithm Optimization (6 months)
+### Phase 2: Algorithm Optimization (in progress)
 
  Question and Approach 
 What is the optimal heuristic weighting for vibe tags vs. loyalty scores? testing with simulated staffing scenarios
@@ -93,7 +91,6 @@ What is the latency impact of LLM integration at production scale? Benchmark Gem
  Question and Approach 
 How does real-time feedback from managers affect heuristic weights? User study with 50 hospitality managers |
 Can the system learn optimal weights through Bayesian optimization? Implement adaptive weight adjustment based on successful assignments 
-
 
 ##  Technical Challenges Solved
 
@@ -130,5 +127,4 @@ Pulse Hospitality Intelligence System demonstrates:
 4. Real-time constraint satisfaction for scheduling problems
 
 
-## 📧Contact
-- 
+## demo vid- [https://www.loom.com/share/ed0b6936b90e45529e1f08b9b5407e4c] 
