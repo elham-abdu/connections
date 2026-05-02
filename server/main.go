@@ -119,6 +119,29 @@ func verifyToken(c *gin.Context) (bool, string, string) {
 	return true, userID, role
 }
 
+// Detect scenario type from requirement text
+func detectScenarioType(requirement string) string {
+	lower := strings.ToLower(requirement)
+	
+	// Customer-facing keywords
+	customerKeywords := []string{"host", "lounge", "guest", "vip", "dining", "restaurant", "bar", "server", "waiter", "front"}
+	for _, kw := range customerKeywords {
+		if strings.Contains(lower, kw) {
+			return "customer-facing"
+		}
+	}
+	
+	// Back-of-house keywords
+	backKeywords := []string{"cleaning", "night", "kitchen", "housekeeping", "maintenance", "warehouse", "stock", "laundry", "back"}
+	for _, kw := range backKeywords {
+		if strings.Contains(lower, kw) {
+			return "back-of-house"
+		}
+	}
+	
+	return "general"
+}
+
 // AI Staff Matching using Gemini 2.5 Flash
 func matchStaffWithAI(ctx context.Context, managerNeed string, staff []Profile) (string, error) {
 	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
@@ -128,7 +151,7 @@ func matchStaffWithAI(ctx context.Context, managerNeed string, staff []Profile) 
 	}
 	
 	if len(staff) == 0 {
-		return "❌ No staff members found in the database.", nil
+		return "❌ No staff members found.", nil
 	}
 	
 	client, err := genai.NewClient(ctx, option.WithAPIKey(geminiAPIKey))
@@ -138,12 +161,24 @@ func matchStaffWithAI(ctx context.Context, managerNeed string, staff []Profile) 
 	}
 	defer client.Close()
 	
-	// Using Gemini 2.5 Flash (latest stable version)
 	model := client.GenerativeModel("gemini-2.5-flash")
 	
-	// Build staff list for AI
+	// Detect scenario type and set weights
+	scenarioType := detectScenarioType(managerNeed)
+	
+	var weightInstruction string
+	switch scenarioType {
+	case "customer-facing":
+		weightInstruction = "PRIORITIZE VIBE TAGS (70%) over Loyalty (30%). Look for energetic, funny, charismatic personalities."
+	case "back-of-house":
+		weightInstruction = "PRIORITIZE LOYALTY (70%) over Vibe Tags (30%). Look for reliable, punctual, serious staff."
+	default:
+		weightInstruction = "Balance equally: Loyalty (50%) and Vibe Tags (50%)."
+	}
+	
+	// Build staff list
 	var staffList strings.Builder
-	staffList.WriteString("STAFF DATABASE - USE ONLY THESE EXACT NAMES:\n")
+	staffList.WriteString("STAFF DATABASE (USE ONLY THESE EXACT NAMES):\n")
 	staffList.WriteString("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
 	
 	for i, s := range staff {
@@ -163,26 +198,28 @@ func matchStaffWithAI(ctx context.Context, managerNeed string, staff []Profile) 
 	
 	staffList.WriteString("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 	staffList.WriteString("RULES:\n")
-	staffList.WriteString("1. ONLY recommend staff from list above\n")
-	staffList.WriteString("2. Use EXACT names in quotes\n")
+	staffList.WriteString("1. ONLY recommend staff from the list above\n")
+	staffList.WriteString("2. Use EXACT names as written in quotes\n")
 	staffList.WriteString("3. Never invent names\n\n")
 	
 	prompt := fmt.Sprintf(`HIRING REQUIREMENT: "%s"
 
 %s
 
+IMPORTANT WEIGHT INSTRUCTION: %s
+
 OUTPUT FORMAT (use EXACT names):
 🎯 BEST MATCH:
 • "EXACT_NAME" (Role) - Loyalty: X%
-Reason: why they are perfect
+Reason: [explain why they fit based on the weight instruction]
 
 🥈 SECOND BEST:
 • "EXACT_NAME" (Role) - Loyalty: X%
-Reason: why they fit
+Reason: [explain why they fit]
 
 🥉 THIRD BEST:
 • "EXACT_NAME" (Role) - Loyalty: X%
-Reason: why they could work`, managerNeed, staffList.String())
+Reason: [explain why they could work]`, managerNeed, staffList.String(), weightInstruction)
 
 	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
@@ -253,6 +290,7 @@ func generateSimpleMatch(managerNeed string, staff []Profile) string {
 		scored = append(scored, ScoredStaff{Staff: s, Score: score, TagMatches: matchedTags})
 	}
 	
+	// Sort by score
 	for i := 0; i < len(scored)-1; i++ {
 		for j := i + 1; j < len(scored); j++ {
 			if scored[j].Score > scored[i].Score {
@@ -332,10 +370,10 @@ func main() {
 	// Health Check
 	r.GET("/api/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"status": "healthy",
-			"service": "pulse-hospitality-api",
+			"status":     "healthy",
+			"service":    "pulse-hospitality-api",
 			"ai_enabled": geminiAPIKey != "",
-			"model": "gemini-2.5-flash",
+			"model":      "gemini-2.5-flash",
 		})
 	})
 
@@ -368,7 +406,7 @@ func main() {
 			if txt, ok := resp.Candidates[0].Content.Parts[0].(genai.Text); ok {
 				fmt.Println("✅ Gemini 2.5 Flash is working!")
 				c.JSON(200, gin.H{
-					"status": "Gemini 2.5 Flash is working!",
+					"status":   "Gemini 2.5 Flash is working!",
 					"response": string(txt),
 				})
 				return
@@ -425,6 +463,7 @@ func main() {
 		var recommendation string
 		if geminiAPIKey != "" {
 			fmt.Println("├─ 🤖 Using Gemini 2.5 Flash AI...")
+			fmt.Printf("├─ Scenario Type: %s\n", detectScenarioType(input.Requirement))
 			ctx := context.Background()
 			rec, err := matchStaffWithAI(ctx, input.Requirement, filteredStaff)
 			if err != nil {
@@ -442,7 +481,7 @@ func main() {
 		c.JSON(200, gin.H{"recommendation": recommendation})
 	})
 
-	// Staff Routes (keep existing)
+	// Staff Routes
 	staffGroup := r.Group("/api/staff")
 	{
 		staffGroup.GET("", func(c *gin.Context) {
