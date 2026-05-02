@@ -74,7 +74,7 @@ notifications: id, staff_id, title, message, created_at
 
 ##  Future Research Directions
 
-### Phase 2: Algorithm Optimization (6 months)
+### Phase 2: Algorithm Optimization (in progress)
 
  Question and Approach 
 What is the optimal heuristic weighting for vibe tags vs. loyalty scores? testing with simulated staffing scenarios
