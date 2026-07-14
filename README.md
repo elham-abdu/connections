@@ -1,6 +1,7 @@
 # Pulse Hospitality Intelligence System – Academic Research Overview
 
 ## Research Problem Statement
+
 Optimization Challenge: How can we model and solve the multi-variable staffing assignment problem in service industries where success depends on both quantifiable metrics (availability, experience) and **qualitative attributes** (personality traits, soft skills)?
 Key Research Questions:
 1. How can heuristic weighting between subjective (vibe tags) and objective (loyalty scores) variables be optimized for staff-task matching?
@@ -8,6 +9,7 @@ Key Research Questions:
 3. How does real-time performance feedback affect heuristic weighting accuracy?
 
 ## System Architecture & Optimization Engine
+
 ### 1. Heuristic Constraint-Satisfaction Engine
 
 The core matching algorithm solves a multi-variable assignment problem:
