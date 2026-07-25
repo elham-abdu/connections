@@ -47,6 +47,7 @@ Why Go?
 ## Technical Implementation
 
 ### Backend (Go/Gin)
+
 - RESTful API with JWT authentication
 - Concurrent request handling for batch operations
 - Supabase client with custom HTTP wrapper
