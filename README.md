@@ -1,6 +1,7 @@
 # Pulse Hospitality Intelligence System – Academic Research Overview
 
 ## Research Problem Statement
+
 Optimization Challenge: How can we model and solve the multi-variable staffing assignment problem in service industries where success depends on both quantifiable metrics (availability, experience) and **qualitative attributes** (personality traits, soft skills)?
 
 Key Research Questions:
@@ -33,6 +34,7 @@ MatchScore = Σ(Role Match × 0.20) + Σ(VibeTags × 0.30) + (LoyaltyScore × 0.
 - Response validation ensures output integrity
 
 ### 3. Concurrent Systems Architecture
+
 Frontend (Next.js) → Go Backend (Gin) → PostgreSQL (Supabase)
                                     ↓
                          Gemini API (Rate-limited)
