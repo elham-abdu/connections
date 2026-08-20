@@ -2,6 +2,7 @@
 
 ## Research Problem Statement
 
+
 Optimization Challenge: How can we model and solve the multi-variable staffing assignment problem in service industries where success depends on both quantifiable metrics (availability, experience) and **qualitative attributes** (personality traits, soft skills)?
 Key Research Questions:
 
