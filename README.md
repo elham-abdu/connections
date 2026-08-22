@@ -58,6 +58,7 @@ Why Go?
 - Role-based route protection
 
 ### Database Schema (PostgreSQL)
+
 sql
 profiles: id, full_name, role, loyalty_score, vibe_tags[], availability[]
 shifts: id, staff_id, date, start_time, end_time, status
