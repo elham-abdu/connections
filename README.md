@@ -40,6 +40,7 @@ Frontend (Next.js) → Go Backend (Gin) → PostgreSQL (Supabase)
 
 
 Why Go?
+
 - Handles high-concurrency scheduling requests
 - Low-latency communication between LLM and database layer
 - Native goroutines for parallel constraint evaluation
