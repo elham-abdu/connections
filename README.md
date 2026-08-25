@@ -54,6 +54,7 @@ Why Go?
 - Supabase client with custom HTTP wrapper
 
 ### Frontend (Next.js 16)
+
 - Server-side rendering for staff portal
 - Real-time availability updates
 - Role-based route protection
