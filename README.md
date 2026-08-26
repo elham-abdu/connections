@@ -69,6 +69,7 @@ notifications: id, staff_id, title, message, created_at
 ## Research Contributions
 
 ### Current Implementation:
+
 1. Novel weighting system for subjective vs. objective variables
 2. Hybrid matching architecture (AI + deterministic fallback)
 3. Real-time constraint satisfaction with 10-second resolution
