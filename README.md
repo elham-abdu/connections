@@ -61,8 +61,7 @@ Why Go?
 
 ### Database Schema (PostgreSQL)
 
-sql
-profiles: id, full_name, role, loyalty_score, vibe_tags[], availability[]
+sql profiles: id, full_name, role, loyalty_score, vibe_tags[], availability[]
 shifts: id, staff_id, date, start_time, end_time, status
 notifications: id, staff_id, title, message, created_at
 
@@ -75,6 +74,7 @@ notifications: id, staff_id, title, message, created_at
 3. Real-time constraint satisfaction with 10-second resolution
 
 ### Validation Metrics:
+
 - Match accuracy: Qualitative review of AI recommendations
 - Latency: <500ms for constraint evaluation on 100+ staff
 - Concurrency: Handle 1000 simultaneous schedule requests
